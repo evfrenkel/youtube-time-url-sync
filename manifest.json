@@ -3,6 +3,16 @@
   "name": "YouTube Time URL Sync",
   "version": "1.0.0",
   "description": "Keeps the YouTube watch URL's t= parameter synced with the current playback time.",
+  "action": {
+    "default_title": "Sync time to URL",
+    "default_icon": {
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],

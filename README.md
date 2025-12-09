@@ -1,22 +1,19 @@
 # YouTube Time URL Sync
 
-Firefox extension that keeps the `t` query parameter in a YouTube watch URL synced with the current playback time. As you watch or scrub, the URL updates in-place via `history.replaceState` so copying the link preserves your position without refreshing the page.
+Firefox extension that lets you manually sync the `t` query parameter in a YouTube watch URL with the current playback time. Click the toolbar icon while on a watch page to update the URL; copying the link will then preserve your position without refreshing the page.
 
 ## How it works
-- Runs a content script on `youtube.com` pages.
-- Polls for the active `<video>` element and listens for time updates, seeks, and play events.
-- Throttles URL updates to once per second and skips live streams (non-finite duration).
-- Handles YouTube's single-page navigation by hooking into history and YouTube navigation events.
+- Runs a content script on `youtube.com` watch pages.
+- When you click the extension icon, it reads the current playback time of the main video and updates the URL's `t` param in-place via `history.replaceState`.
 
 ## Install for development
 1. Open Firefox and go to `about:debugging#/runtime/this-firefox`.
 2. Click **Load Temporary Add-on…**.
 3. Select this folder's `manifest.json`.
-4. Navigate to a YouTube watch page and play a video; the URL's `t` param will update as playback progresses.
+4. Navigate to a YouTube watch page, start playback, then click the extension icon to update the `t` param.
 
 ## Notes
 - Works on standard watch pages, including live streams with DVR. Shorts are ignored.
-- URL updates are throttled to reduce history churn; expect ~1s granularity.
 
 ## License
 MIT License. See `LICENSE` for details.

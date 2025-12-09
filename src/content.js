@@ -1,164 +1,27 @@
-const MIN_UPDATE_INTERVAL_MS = 1000;
-const nativeReplaceState = History.prototype.replaceState;
-const nativePushState = History.prototype.pushState;
-let currentVideo = null;
-let lastUpdateTimestamp = 0;
-let lastAppliedSeconds = null;
-let videoCheckInterval = null;
-let navigationListenerSetup = false;
-let locationPollInterval = null;
-let suppressHistoryPush = false;
-
 const isWatchPage = () => window.location.pathname === "/watch";
+const nativeReplaceState = History.prototype.replaceState;
 
-const toUrl = (value) => {
-  try {
-    return new URL(value, window.location.href);
-  } catch {
-    return null;
-  }
-};
-
-const searchParamsEqualExceptT = (a, b) => {
-  const keys = new Set([...a.keys(), ...b.keys()]);
-  for (const key of keys) {
-    if (key === "t") continue;
-    const aVals = a.getAll(key);
-    const bVals = b.getAll(key);
-    if (aVals.length !== bVals.length) return false;
-    for (let i = 0; i < aVals.length; i += 1) {
-      if (aVals[i] !== bVals[i]) return false;
-    }
-  }
-  return true;
-};
-
-const differsOnlyInTimeParam = (current, next) => {
-  if (!current || !next) return false;
-  if (current.origin !== next.origin) return false;
-  if (current.pathname !== next.pathname) return false;
-  if (current.hash !== next.hash) return false;
-  return searchParamsEqualExceptT(current.searchParams, next.searchParams);
-};
-
-const parseSeconds = (value) => {
-  const parsed = parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const updateUrlTimeParam = (seconds) => {
-  const roundedSeconds = Math.max(0, Math.floor(seconds));
-  if (roundedSeconds === lastAppliedSeconds) return;
-
-  const url = new URL(window.location.href);
-  const existing = parseSeconds(url.searchParams.get("t"));
-  if (existing === roundedSeconds) {
-    lastAppliedSeconds = roundedSeconds;
-    return;
-  }
-
-  url.searchParams.set("t", String(roundedSeconds));
-  const newUrl = `${url.pathname}${url.search}${url.hash}`;
-  suppressHistoryPush = true;
-  try {
-    nativeReplaceState.call(history, history.state, "", newUrl);
-  } finally {
-    suppressHistoryPush = false;
-  }
-  lastAppliedSeconds = roundedSeconds;
-};
-
-const handleTimeUpdate = () => {
-  if (!currentVideo || !isWatchPage()) return;
-
-  const now = performance.now();
-  if (now - lastUpdateTimestamp < MIN_UPDATE_INTERVAL_MS) return;
-  lastUpdateTimestamp = now;
-
-  if (!Number.isFinite(currentVideo.currentTime) || currentVideo.currentTime < 0) return;
-  updateUrlTimeParam(currentVideo.currentTime);
-};
-
-const detachVideoListeners = () => {
-  if (!currentVideo) return;
-  currentVideo.removeEventListener("timeupdate", handleTimeUpdate);
-  currentVideo.removeEventListener("seeked", handleTimeUpdate);
-  currentVideo.removeEventListener("play", handleTimeUpdate);
-  currentVideo = null;
-};
-
-const attachVideoListeners = () => {
+const syncTimeToUrl = () => {
+  if (!isWatchPage()) return;
   const video = document.querySelector("video.html5-main-video");
-  if (!video || video === currentVideo) return;
+  if (!video) return;
+  if (!Number.isFinite(video.currentTime) || video.currentTime < 0) return;
 
-  detachVideoListeners();
-  currentVideo = video;
-  currentVideo.addEventListener("timeupdate", handleTimeUpdate);
-  currentVideo.addEventListener("seeked", handleTimeUpdate);
-  currentVideo.addEventListener("play", handleTimeUpdate);
+  const seconds = Math.max(0, Math.floor(video.currentTime));
+  const url = new URL(window.location.href);
+  const existing = parseInt(url.searchParams.get("t"), 10);
+  if (Number.isFinite(existing) && existing === seconds) return;
+
+  url.searchParams.set("t", String(seconds));
+  nativeReplaceState.call(history, history.state, "", `${url.pathname}${url.search}${url.hash}`);
 };
 
-const startVideoPolling = () => {
-  if (videoCheckInterval) return;
-
-  videoCheckInterval = setInterval(() => {
-    if (!isWatchPage()) {
-      detachVideoListeners();
-      return;
+const runtime = typeof browser !== "undefined" ? browser.runtime : chrome?.runtime;
+if (runtime) {
+  runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === "SYNC_TIME") {
+      syncTimeToUrl();
+      sendResponse?.({ ok: true });
     }
-    attachVideoListeners();
-  }, 500);
-};
-
-const resetStateForNavigation = () => {
-  lastAppliedSeconds = parseSeconds(new URL(window.location.href).searchParams.get("t"));
-  lastUpdateTimestamp = 0;
-  detachVideoListeners();
-  attachVideoListeners();
-};
-
-const startLocationPolling = () => {
-  if (locationPollInterval) return;
-  let lastUrl = window.location.href;
-  locationPollInterval = setInterval(() => {
-    if (window.location.href !== lastUrl) {
-      lastUrl = window.location.href;
-      resetStateForNavigation();
-    }
-  }, 500);
-};
-
-const setupNavigationListeners = () => {
-  if (navigationListenerSetup) return;
-  navigationListenerSetup = true;
-
-  const notifyNavigation = () => resetStateForNavigation();
-
-  // Prevent pushState churn when only the t param changes.
-  history.pushState = function (state, title, url) {
-    if (!suppressHistoryPush && url != null) {
-      const currentUrl = toUrl(window.location.href);
-      const nextUrl = toUrl(url);
-      if (differsOnlyInTimeParam(currentUrl, nextUrl)) {
-        return nativeReplaceState.call(history, state, title, `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-      }
-    }
-    return nativePushState.apply(this, arguments);
-  };
-
-  window.addEventListener("yt-navigate-finish", notifyNavigation);
-  // YouTube uses SPA navigation; fire our sync reset when the URL changes.
-  window.addEventListener("yt-page-data-updated", notifyNavigation);
-  window.addEventListener("popstate", notifyNavigation);
-  window.addEventListener("hashchange", notifyNavigation);
-  startLocationPolling();
-};
-
-const init = () => {
-  if (!window.location.hostname.includes("youtube.com")) return;
-  resetStateForNavigation();
-  setupNavigationListeners();
-  startVideoPolling();
-};
-
-init();
+  });
+}
