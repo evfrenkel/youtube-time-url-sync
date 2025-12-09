@@ -11,6 +11,36 @@ let suppressHistoryPush = false;
 
 const isWatchPage = () => window.location.pathname === "/watch";
 
+const toUrl = (value) => {
+  try {
+    return new URL(value, window.location.href);
+  } catch {
+    return null;
+  }
+};
+
+const searchParamsEqualExceptT = (a, b) => {
+  const keys = new Set([...a.keys(), ...b.keys()]);
+  for (const key of keys) {
+    if (key === "t") continue;
+    const aVals = a.getAll(key);
+    const bVals = b.getAll(key);
+    if (aVals.length !== bVals.length) return false;
+    for (let i = 0; i < aVals.length; i += 1) {
+      if (aVals[i] !== bVals[i]) return false;
+    }
+  }
+  return true;
+};
+
+const differsOnlyInTimeParam = (current, next) => {
+  if (!current || !next) return false;
+  if (current.origin !== next.origin) return false;
+  if (current.pathname !== next.pathname) return false;
+  if (current.hash !== next.hash) return false;
+  return searchParamsEqualExceptT(current.searchParams, next.searchParams);
+};
+
 const parseSeconds = (value) => {
   const parsed = parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : null;
@@ -104,10 +134,16 @@ const setupNavigationListeners = () => {
 
   const notifyNavigation = () => resetStateForNavigation();
 
-  // Prevent pushState calls triggered by our own replaceState from adding history entries.
-  history.pushState = function (...args) {
-    if (suppressHistoryPush) return;
-    return nativePushState.apply(this, args);
+  // Prevent pushState churn when only the t param changes.
+  history.pushState = function (state, title, url) {
+    if (!suppressHistoryPush && url != null) {
+      const currentUrl = toUrl(window.location.href);
+      const nextUrl = toUrl(url);
+      if (differsOnlyInTimeParam(currentUrl, nextUrl)) {
+        return nativeReplaceState.call(history, state, title, `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      }
+    }
+    return nativePushState.apply(this, arguments);
   };
 
   window.addEventListener("yt-navigate-finish", notifyNavigation);
