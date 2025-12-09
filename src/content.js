@@ -1,11 +1,13 @@
 const MIN_UPDATE_INTERVAL_MS = 1000;
 const nativeReplaceState = History.prototype.replaceState;
+const nativePushState = History.prototype.pushState;
 let currentVideo = null;
 let lastUpdateTimestamp = 0;
 let lastAppliedSeconds = null;
 let videoCheckInterval = null;
 let navigationListenerSetup = false;
 let locationPollInterval = null;
+let suppressHistoryPush = false;
 
 const isWatchPage = () => window.location.pathname === "/watch";
 
@@ -27,7 +29,12 @@ const updateUrlTimeParam = (seconds) => {
 
   url.searchParams.set("t", String(roundedSeconds));
   const newUrl = `${url.pathname}${url.search}${url.hash}`;
-  nativeReplaceState.call(history, history.state, "", newUrl);
+  suppressHistoryPush = true;
+  try {
+    nativeReplaceState.call(history, history.state, "", newUrl);
+  } finally {
+    suppressHistoryPush = false;
+  }
   lastAppliedSeconds = roundedSeconds;
 };
 
@@ -96,6 +103,12 @@ const setupNavigationListeners = () => {
   navigationListenerSetup = true;
 
   const notifyNavigation = () => resetStateForNavigation();
+
+  // Prevent pushState calls triggered by our own replaceState from adding history entries.
+  history.pushState = function (...args) {
+    if (suppressHistoryPush) return;
+    return nativePushState.apply(this, args);
+  };
 
   window.addEventListener("yt-navigate-finish", notifyNavigation);
   // YouTube uses SPA navigation; fire our sync reset when the URL changes.
