@@ -1,5 +1,5 @@
 const MIN_UPDATE_INTERVAL_MS = 1000;
-const nativeReplaceState = history.replaceState.bind(history);
+const nativeReplaceState = History.prototype.replaceState;
 let currentVideo = null;
 let lastUpdateTimestamp = 0;
 let lastAppliedSeconds = null;
@@ -27,7 +27,7 @@ const updateUrlTimeParam = (seconds) => {
 
   url.searchParams.set("t", String(roundedSeconds));
   const newUrl = `${url.pathname}${url.search}${url.hash}`;
-  nativeReplaceState(history.state, "", newUrl);
+  nativeReplaceState.call(history, history.state, "", newUrl);
   lastAppliedSeconds = roundedSeconds;
 };
 
