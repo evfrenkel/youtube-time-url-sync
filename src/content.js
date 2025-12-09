@@ -26,7 +26,8 @@ const updateUrlTimeParam = (seconds) => {
   }
 
   url.searchParams.set("t", String(roundedSeconds));
-  nativeReplaceState(history.state, "", url.toString());
+  const newUrl = `${url.pathname}${url.search}${url.hash}`;
+  nativeReplaceState(history.state, "", newUrl);
   lastAppliedSeconds = roundedSeconds;
 };
 
