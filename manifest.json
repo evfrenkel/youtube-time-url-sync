@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Time URL Sync",
+  "version": "1.0.0",
+  "description": "Keeps the YouTube watch URL's t= parameter synced with the current playback time.",
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["*://*.youtube.com/*"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "youtube-time-url-sync@example.com"
+    }
+  }
+}
