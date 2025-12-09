@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Time URL Sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Keeps the YouTube watch URL's t= parameter synced with the current playback time.",
   "action": {
     "default_title": "Sync time to URL",
