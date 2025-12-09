@@ -5,6 +5,7 @@ let lastUpdateTimestamp = 0;
 let lastAppliedSeconds = null;
 let videoCheckInterval = null;
 let navigationListenerSetup = false;
+let locationPollInterval = null;
 
 const isWatchPage = () => window.location.pathname === "/watch";
 
@@ -78,25 +79,29 @@ const resetStateForNavigation = () => {
   attachVideoListeners();
 };
 
+const startLocationPolling = () => {
+  if (locationPollInterval) return;
+  let lastUrl = window.location.href;
+  locationPollInterval = setInterval(() => {
+    if (window.location.href !== lastUrl) {
+      lastUrl = window.location.href;
+      resetStateForNavigation();
+    }
+  }, 500);
+};
+
 const setupNavigationListeners = () => {
   if (navigationListenerSetup) return;
   navigationListenerSetup = true;
 
   const notifyNavigation = () => resetStateForNavigation();
 
-  const originalPushState = history.pushState;
-
-  history.pushState = function (...args) {
-    const result = originalPushState.apply(this, args);
-    window.dispatchEvent(new Event("locationchange"));
-    return result;
-  };
-
   window.addEventListener("yt-navigate-finish", notifyNavigation);
   // YouTube uses SPA navigation; fire our sync reset when the URL changes.
   window.addEventListener("yt-page-data-updated", notifyNavigation);
   window.addEventListener("popstate", notifyNavigation);
-  window.addEventListener("locationchange", notifyNavigation);
+  window.addEventListener("hashchange", notifyNavigation);
+  startLocationPolling();
 };
 
 const init = () => {
