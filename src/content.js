@@ -35,7 +35,7 @@ const handleTimeUpdate = () => {
   if (now - lastUpdateTimestamp < MIN_UPDATE_INTERVAL_MS) return;
   lastUpdateTimestamp = now;
 
-  if (!Number.isFinite(currentVideo.duration) || currentVideo.duration <= 0) return;
+  if (!Number.isFinite(currentVideo.currentTime) || currentVideo.currentTime < 0) return;
   updateUrlTimeParam(currentVideo.currentTime);
 };
 

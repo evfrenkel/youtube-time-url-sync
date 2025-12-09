@@ -15,5 +15,8 @@ Firefox extension that keeps the `t` query parameter in a YouTube watch URL sync
 4. Navigate to a YouTube watch page and play a video; the URL's `t` param will update as playback progresses.
 
 ## Notes
-- Works on standard watch pages. Shorts and live streams are ignored because their duration is non-finite.
+- Works on standard watch pages, including live streams with DVR. Shorts are ignored.
 - URL updates are throttled to reduce history churn; expect ~1s granularity.
+
+## License
+MIT License. See `LICENSE` for details.

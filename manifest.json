@@ -11,13 +11,16 @@
     }
   ],
   "icons": {
-    "48": "icons/icon.svg",
-    "128": "icons/icon.svg"
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "host_permissions": ["*://*.youtube.com/*"],
   "browser_specific_settings": {
     "gecko": {
-      "id": "youtube-time-url-sync@example.com"
+      "id": "youtube-time-url-sync@evfrenkel.com",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
 }
