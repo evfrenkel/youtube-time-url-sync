@@ -4,6 +4,7 @@ let lastUpdateTimestamp = 0;
 let lastAppliedSeconds = null;
 let videoCheckInterval = null;
 let navigationListenerSetup = false;
+let suppressLocationChangeEvent = false;
 
 const isWatchPage = () => window.location.pathname === "/watch";
 
@@ -24,7 +25,12 @@ const updateUrlTimeParam = (seconds) => {
   }
 
   url.searchParams.set("t", String(roundedSeconds));
-  history.replaceState(history.state, "", url.toString());
+  suppressLocationChangeEvent = true;
+  try {
+    history.replaceState(history.state, "", url.toString());
+  } finally {
+    suppressLocationChangeEvent = false;
+  }
   lastAppliedSeconds = roundedSeconds;
 };
 
@@ -94,7 +100,9 @@ const setupNavigationListeners = () => {
 
   history.replaceState = function (...args) {
     const result = originalReplaceState.apply(this, args);
-    window.dispatchEvent(new Event("locationchange"));
+    if (!suppressLocationChangeEvent) {
+      window.dispatchEvent(new Event("locationchange"));
+    }
     return result;
   };
 
